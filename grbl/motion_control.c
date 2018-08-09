@@ -227,11 +227,14 @@ void mc_homing_cycle(uint8_t cycle_mask)
   #endif
   {
     // Search to engage all axes limit switches at faster homing seek rate.
+	protocol_execute_realtime(); // Check for reset and set system abort.
     limits_go_home(HOMING_CYCLE_0);  // Homing cycle 0
     #ifdef HOMING_CYCLE_1
+	  protocol_execute_realtime(); // Check for reset and set system abort.
       limits_go_home(HOMING_CYCLE_1);  // Homing cycle 1
     #endif
     #ifdef HOMING_CYCLE_2
+	  protocol_execute_realtime(); // Check for reset and set system abort.
       limits_go_home(HOMING_CYCLE_2);  // Homing cycle 2
     #endif
   }
