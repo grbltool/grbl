@@ -25,7 +25,47 @@
 
 #ifndef cpu_map_h
 #define cpu_map_h
+  
+#include "config.h"  
 
+#ifdef CPU_MAP_CY8CKIT_059
+    
+  #define F_CPU 24000000UL    // 24 MHz
+  
+  #define X_STEP_BIT        0 // Mapped in hardware schematic
+  #define Y_STEP_BIT        1 // Mapped in hardware schematic
+  #define Z_STEP_BIT        2 // Mapped in hardware schematic
+  #define STEP_MASK ((1<<X_STEP_BIT)|(1<<Y_STEP_BIT)|(1<<Z_STEP_BIT)) // All step bits
+
+  #define X_DIRECTION_BIT   0 // Mapped in hardware schematic
+  #define Y_DIRECTION_BIT   1 // Mapped in hardware schematic
+  #define Z_DIRECTION_BIT   2 // Mapped in hardware schematic
+  #define DIRECTION_MASK    ((1<<X_DIRECTION_BIT)|(1<<Y_DIRECTION_BIT)|(1<<Z_DIRECTION_BIT)) // All direction bits
+
+  #define X_LIMIT_BIT       0 // Mapped in hardware schematic
+  #define Y_LIMIT_BIT       1 // Mapped in hardware schematic
+  #define Z_LIMIT_BIT       2 // Mapped in hardware schematic
+  #define LIMIT_MASK       ((1<<X_LIMIT_BIT)|(1<<Y_LIMIT_BIT)|(1<<Z_LIMIT_BIT)) // All limit bits
+
+  #define CONTROL_RESET_BIT         0  // Mapped in hardware schematic
+  #define CONTROL_FEED_HOLD_BIT     1  // Mapped in hardware schematic
+  #define CONTROL_CYCLE_START_BIT   2  // Mapped in hardware schematic
+  #define CONTROL_SAFETY_DOOR_BIT   3  // Mapped in hardware schematic
+  #define CONTROL_MASK      ((1<<CONTROL_RESET_BIT)|(1<<CONTROL_FEED_HOLD_BIT)|(1<<CONTROL_CYCLE_START_BIT)|(1<<CONTROL_SAFETY_DOOR_BIT))
+
+  #define STEPPERS_DISABLE_BIT    0  // Mapped in hardware schematic
+  #define STEPPERS_DISABLE_MASK   (1<<STEPPERS_DISABLE_BIT)
+
+  // Variable spindle configuration below. Do not change unless you know what you are doing.
+  // NOTE: Only used when variable spindle is enabled.
+  #define SPINDLE_PWM_MAX_VALUE     255
+  #ifndef SPINDLE_PWM_MIN_VALUE
+    #define SPINDLE_PWM_MIN_VALUE   1   // Must be greater than zero.
+  #endif
+  #define SPINDLE_PWM_OFF_VALUE     0
+  #define SPINDLE_PWM_RANGE         (SPINDLE_PWM_MAX_VALUE-SPINDLE_PWM_MIN_VALUE)
+
+#endif
 
 #ifdef CPU_MAP_ATMEGA328P // (Arduino Uno) Officially supported by Grbl.
 
