@@ -23,6 +23,10 @@
 
 void system_init()
 {
+  #ifdef PSOC
+  ISR_CONTROL_StartEx(isr_control_handler);
+  CONTROL_STATUS_REG_InterruptEnable();
+  #else
   CONTROL_DDR &= ~(CONTROL_MASK); // Configure as input pins
   #ifdef DISABLE_CONTROL_PIN_PULL_UP
     CONTROL_PORT &= ~(CONTROL_MASK); // Normal low operation. Requires external pull-down.
@@ -31,6 +35,7 @@ void system_init()
   #endif
   CONTROL_PCMSK |= CONTROL_MASK;  // Enable specific pins of the Pin Change Interrupt
   PCICR |= (1 << CONTROL_INT);   // Enable Pin Change Interrupt
+  #endif
 }
 
 
@@ -40,9 +45,14 @@ void system_init()
 uint8_t system_control_get_state()
 {
   uint8_t control_state = 0;
+  #ifdef PSOC
+  // 0: reset, 1: feed hold, 2: cycle start, 3: door
+  uint8_t pin = CONTROL_PIN_Read();
+  #else
   uint8_t pin = (CONTROL_PIN & CONTROL_MASK);
   #ifdef INVERT_CONTROL_PIN_MASK
     pin ^= INVERT_CONTROL_PIN_MASK;
+  #endif
   #endif
   if (pin) {
     #ifdef ENABLE_SAFETY_DOOR_INPUT_PIN
@@ -60,7 +70,11 @@ uint8_t system_control_get_state()
 // only the realtime command execute variable to have the main program execute these when
 // its ready. This works exactly like the character-based realtime commands when picked off
 // directly from the incoming serial data stream.
+#ifdef PSOC
+void isr_control_handler()
+#else
 ISR(CONTROL_INT_vect)
+#endif
 {
   uint8_t pin = system_control_get_state();
   if (pin) {
@@ -351,57 +365,121 @@ uint8_t system_check_travel_limits(float *target)
 
 // Special handlers for setting and clearing Grbl's real-time execution flags.
 void system_set_exec_state_flag(uint8_t mask) {
+  #ifdef PSOC
+  CyGlobalIntDisable; 
+  #else
   uint8_t sreg = SREG;
   cli();
+  #endif
   sys_rt_exec_state |= (mask);
+  #ifdef PSOC
+  CyGlobalIntEnable;
+  #else
   SREG = sreg;
+  #endif
 }
 
 void system_clear_exec_state_flag(uint8_t mask) {
+  #ifdef PSOC
+  CyGlobalIntDisable; 
+  #else
   uint8_t sreg = SREG;
   cli();
+  #endif
   sys_rt_exec_state &= ~(mask);
+  #ifdef PSOC
+  CyGlobalIntEnable;
+  #else
   SREG = sreg;
+  #endif
 }
 
 void system_set_exec_alarm(uint8_t code) {
+  #ifdef PSOC
+  CyGlobalIntDisable; 
+  #else
   uint8_t sreg = SREG;
   cli();
+  #endif
   sys_rt_exec_alarm = code;
+  #ifdef PSOC
+  CyGlobalIntEnable;
+  #else
   SREG = sreg;
+  #endif
 }
 
 void system_clear_exec_alarm() {
+  #ifdef PSOC
+  CyGlobalIntDisable; 
+  #else
   uint8_t sreg = SREG;
   cli();
+  #endif
   sys_rt_exec_alarm = 0;
+  #ifdef PSOC
+  CyGlobalIntEnable;
+  #else
   SREG = sreg;
+  #endif
 }
 
 void system_set_exec_motion_override_flag(uint8_t mask) {
+  #ifdef PSOC
+  CyGlobalIntDisable; 
+  #else
   uint8_t sreg = SREG;
   cli();
+  #endif
   sys_rt_exec_motion_override |= (mask);
+  #ifdef PSOC
+  CyGlobalIntEnable;
+  #else
   SREG = sreg;
+  #endif
 }
 
 void system_set_exec_accessory_override_flag(uint8_t mask) {
+  #ifdef PSOC
+  CyGlobalIntDisable; 
+  #else
   uint8_t sreg = SREG;
   cli();
+  #endif
   sys_rt_exec_accessory_override |= (mask);
+  #ifdef PSOC
+  CyGlobalIntEnable;
+  #else
   SREG = sreg;
+  #endif
 }
 
 void system_clear_exec_motion_overrides() {
+  #ifdef PSOC
+  CyGlobalIntDisable; 
+  #else
   uint8_t sreg = SREG;
   cli();
+  #endif
   sys_rt_exec_motion_override = 0;
+  #ifdef PSOC
+  CyGlobalIntEnable;
+  #else
   SREG = sreg;
+  #endif
 }
 
 void system_clear_exec_accessory_overrides() {
+  #ifdef PSOC
+  CyGlobalIntDisable; 
+  #else
   uint8_t sreg = SREG;
   cli();
+  #endif
   sys_rt_exec_accessory_override = 0;
+  #ifdef PSOC
+  CyGlobalIntEnable;
+  #else
   SREG = sreg;
+  #endif
 }

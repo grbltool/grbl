@@ -24,17 +24,25 @@
 
 void printString(const char *s)
 {
+  #ifdef PSOC
+  UART_PutString ( s );
+  #else
   while (*s)
     serial_write(*s++);
+  #endif
 }
 
 
 // Print a string stored in PGM-memory
 void printPgmString(const char *s)
 {
+  #ifdef PSOC
+  UART_PutString ( s );
+  #else
   char c;
   while ((c = pgm_read_byte_near(s++)))
     serial_write(c);
+  #endif
 }
 
 

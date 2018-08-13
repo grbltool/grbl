@@ -27,12 +27,13 @@
 
 #ifndef config_h
 #define config_h
-#include "grbl.h" // For Arduino IDE compatibility.
+//#include "grbl.h" // For Arduino IDE compatibility.
 
+#define PSOC
 
 // Define CPU pin map and default settings.
 #define DEFAULTS_GRBLMILL
-#define CPU_MAP_ATMEGA328P // Arduino Uno CPU
+#define CPU_MAP_CY8CKIT_059
 
 // Serial baud rate
 // #define BAUD_RATE 230400
@@ -426,7 +427,11 @@
 // available RAM, like when re-compiling for a Mega2560. Or decrease if the Arduino begins to
 // crash due to the lack of available RAM or if the CPU is having trouble keeping up with planning
 // new incoming motions as they are executed.
+  #ifdef PSOC
+#define BLOCK_BUFFER_SIZE 32 // Uncomment to override default in planner.h.
+#else
 // #define BLOCK_BUFFER_SIZE 16 // Uncomment to override default in planner.h.
+#endif
 
 // Governs the size of the intermediary step segment buffer between the step execution algorithm
 // and the planner blocks. Each segment is set of steps executed at a constant velocity over a
@@ -456,8 +461,13 @@
 // 115200 baud will take 5 msec to transmit a typical 55 character report. Worst case reports are
 // around 90-100 characters. As long as the serial TX buffer doesn't get continually maxed, Grbl
 // will continue operating efficiently. Size the TX buffer around the size of a worst-case report.
+#ifdef PSOC  
+#define RX_BUFFER_SIZE 254 // (1-254) Uncomment to override defaults in serial.h
+#define TX_BUFFER_SIZE 254 // (1-254)
+#else  
 // #define RX_BUFFER_SIZE 128 // (1-254) Uncomment to override defaults in serial.h
 // #define TX_BUFFER_SIZE 100 // (1-254)
+#endif  
 
 // A simple software debouncing feature for hard limit switches. When enabled, the interrupt 
 // monitoring the hard limit switch pins will enable the Arduino's watchdog timer to re-check 

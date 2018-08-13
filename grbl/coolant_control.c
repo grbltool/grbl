@@ -23,10 +23,12 @@
 
 void coolant_init()
 {
+#ifndef PSOC
   COOLANT_FLOOD_DDR |= (1 << COOLANT_FLOOD_BIT); // Configure as output pin
   #ifdef ENABLE_M7
     COOLANT_MIST_DDR |= (1 << COOLANT_MIST_BIT);
   #endif
+#endif  
   coolant_stop();
 }
 
@@ -35,14 +37,21 @@ void coolant_init()
 uint8_t coolant_get_state()
 {
   uint8_t cl_state = COOLANT_STATE_DISABLE;
+  #ifdef PSOC
+	if (COOLANT_FLOOD_PIN_Read()) {
+  #else
   #ifdef INVERT_COOLANT_FLOOD_PIN
     if (bit_isfalse(COOLANT_FLOOD_PORT,(1 << COOLANT_FLOOD_BIT))) {
   #else
     if (bit_istrue(COOLANT_FLOOD_PORT,(1 << COOLANT_FLOOD_BIT))) {
   #endif
+  #endif
     cl_state |= COOLANT_STATE_FLOOD;
   }
   #ifdef ENABLE_M7
+  #ifdef PSOC
+    if (COOLANT_MIST_PIN_Read()) {
+  #else
     #ifdef INVERT_COOLANT_MIST_PIN
       if (bit_isfalse(COOLANT_MIST_PORT,(1 << COOLANT_MIST_BIT))) {
     #else
@@ -50,6 +59,7 @@ uint8_t coolant_get_state()
     #endif
       cl_state |= COOLANT_STATE_MIST;
     }
+  #endif
   #endif
   return(cl_state);
 }
@@ -59,6 +69,10 @@ uint8_t coolant_get_state()
 // an interrupt-level. No report flag set, but only called by routines that don't need it.
 void coolant_stop()
 {
+#ifdef PSOC
+  COOLANT_FLOOD_PIN_Write(0);
+  COOLANT_MIST_PIN_Write(0);
+#else
   #ifdef INVERT_COOLANT_FLOOD_PIN
     COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
   #else
@@ -71,6 +85,7 @@ void coolant_stop()
       COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
     #endif
   #endif
+#endif
 }
 
 
@@ -83,31 +98,47 @@ void coolant_set_state(uint8_t mode)
   if (sys.abort) { return; } // Block during abort.  
   
 	if (mode & COOLANT_FLOOD_ENABLE) {
+		#ifdef PSOC
+			COOLANT_FLOOD_PIN_Write(1);
+		#else
 		#ifdef INVERT_COOLANT_FLOOD_PIN
 			COOLANT_FLOOD_PORT &= ~(1 << COOLANT_FLOOD_BIT);
 		#else
 			COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
 		#endif
+		#endif
 	} else {
-	  #ifdef INVERT_COOLANT_FLOOD_PIN
+		#ifdef PSOC
+			COOLANT_FLOOD_PIN_Write(0);
+		#else
+		#ifdef INVERT_COOLANT_FLOOD_PIN
 			COOLANT_FLOOD_PORT |= (1 << COOLANT_FLOOD_BIT);
 		#else
 			COOLANT_FLOOD_PORT &= ~(1 << COOLANT_FLOOD_BIT);
+		#endif
 		#endif
 	}
   
 	#ifdef ENABLE_M7
 		if (mode & COOLANT_MIST_ENABLE) {
+			#ifdef PSOC
+				COOLANT_MIST_PIN_Write(1);
+			#else
 			#ifdef INVERT_COOLANT_MIST_PIN
 				COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
 			#else
 				COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
 			#endif
+			#endif
 		} else {
+			#ifdef PSOC
+				COOLANT_MIST_PIN_Write(0);
+			#else
 			#ifdef INVERT_COOLANT_MIST_PIN
 				COOLANT_MIST_PORT |= (1 << COOLANT_MIST_BIT);
 			#else
 				COOLANT_MIST_PORT &= ~(1 << COOLANT_MIST_BIT);
+			#endif
 			#endif
 		}
 	#endif

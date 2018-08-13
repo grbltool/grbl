@@ -213,12 +213,17 @@ static st_prep_t prep;
 void st_wake_up()
 {
   // Enable stepper drivers.
+  #ifdef PSOC
+    STEP_ENABLE_CONTROL_REG_Write(1);
+  #else
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
   else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
+  #endif
 
   // Initialize stepper output bits to ensure first ISR call does not step.
   st.step_outbits = step_port_invert_mask;
 
+  #ifndef PSOC
   // Initialize step pulse timing from settings. Here to ensure updating after re-writing.
   #ifdef STEP_PULSE_DELAY
     // Set total step pulse time after direction pin set. Ad hoc computation from oscilloscope.
@@ -229,9 +234,14 @@ void st_wake_up()
     // Set step pulse time. Ad hoc computation from oscilloscope. Uses two's complement.
     st.step_pulse_time = -(((settings.pulse_microseconds-2)*TICKS_PER_MICROSECOND) >> 3);
   #endif
+  #endif
 
+  #ifdef PSOC
+    STEP_TIMER_Start();
+  #else
   // Enable Stepper Driver Interrupt
   TIMSK1 |= (1<<OCIE1A);
+  #endif
 }
 
 
@@ -239,8 +249,12 @@ void st_wake_up()
 void st_go_idle()
 {
   // Disable Stepper Driver Interrupt. Allow Stepper Port Reset Interrupt to finish, if active.
+  #ifdef PSOC
+    STEP_TIMER_Stop();
+  #else
   TIMSK1 &= ~(1<<OCIE1A); // Disable Timer1 interrupt
   TCCR1B = (TCCR1B & ~((1<<CS12) | (1<<CS11))) | (1<<CS10); // Reset clock to no prescaling.
+  #endif
   busy = false;
 
   // Set stepper driver idle state, disabled or enabled, depending on settings and circumstances.
@@ -252,8 +266,12 @@ void st_go_idle()
     pin_state = true; // Override. Disable steppers.
   }
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; } // Apply pin invert.
+  #ifdef PSOC
+    STEP_ENABLE_CONTROL_REG_Write(0); // TODO use STEPPERS_DISABLE_BIT
+  #else
   if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
   else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
+  #endif
 }
 
 
@@ -305,28 +323,49 @@ void st_go_idle()
 // TODO: Replace direct updating of the int32 position counters in the ISR somehow. Perhaps use smaller
 // int8 variables and update position counters only when a segment completes. This can get complicated
 // with probing and homing cycles that require true real-time positions.
+#ifdef PSOC
+void isr_stepper_handler()
+#else
 ISR(TIMER1_COMPA_vect)
+#endif
 {
+  #ifdef PSOC
+    STEP_TIMER_ReadStatusRegister(); // clear the PSoC interrupt
+  #endif
   if (busy) { return; } // The busy-flag is used to avoid reentering this interrupt
 
   // Set the direction pins a couple of nanoseconds before we step the steppers
+  #ifdef PSOC
+  STEP_DIR_CONTROL_REG_Write(st.dir_outbits & DIRECTION_MASK);
+  #else
   DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK);
+  #endif
 
   // Then pulse the stepping pins
   #ifdef STEP_PULSE_DELAY
     st.step_bits = (STEP_PORT & ~STEP_MASK) | st.step_outbits; // Store out_bits to prevent overwriting.
   #else  // Normal operation
+    #ifdef PSOC
+    STEP_CONTROL_REG_Write(st.step_outbits);
+    #else
     STEP_PORT = (STEP_PORT & ~STEP_MASK) | st.step_outbits;
+    #endif
   #endif
 
+  #ifndef PSOC
   // Enable step pulse reset timer so that The Stepper Port Reset Interrupt can reset the signal after
   // exactly settings.pulse_microseconds microseconds, independent of the main Timer1 prescaler.
   TCNT0 = st.step_pulse_time; // Reload Timer0 counter
   TCCR0B = (1<<CS01); // Begin Timer0. Full speed, 1/8 prescaler
+  #endif
 
   busy = true;
+  #ifdef PSOC
+    STEP_TIMER_Start();
+  #else
   sei(); // Re-enable interrupts to allow Stepper Port Reset Interrupt to fire on-time.
          // NOTE: The remaining code in this ISR will finish before returning to main program.
+  #endif
 
   // If there is no step segment, attempt to pop one from the stepper buffer
   if (st.exec_segment == NULL) {
@@ -341,7 +380,12 @@ ISR(TIMER1_COMPA_vect)
       #endif
 
       // Initialize step segment timing per step and load number of steps to execute.
+      #ifdef PSOC
+      // TODO Wieso Periode???
+      STEP_TIMER_WritePeriod(st.exec_segment->cycles_per_tick);
+      #else
       OCR1A = st.exec_segment->cycles_per_tick;
+      #endif
       st.step_count = st.exec_segment->n_step; // NOTE: Can sometimes be zero when moving slow.
       // If the new segment starts a new planner block, initialize stepper variables and counters.
       // NOTE: When the segment data index changes, this indicates a new planner block.
@@ -446,6 +490,7 @@ ISR(TIMER1_COMPA_vect)
 // This interrupt is enabled by ISR_TIMER1_COMPAREA when it sets the motor port bits to execute
 // a step. This ISR resets the motor port after a short period (settings.pulse_microseconds)
 // completing one step cycle.
+#ifndef PSOC
 ISR(TIMER0_OVF_vect)
 {
   // Reset stepping pins (leave the direction pins)
@@ -462,6 +507,7 @@ ISR(TIMER0_OVF_vect)
   {
     STEP_PORT = st.step_bits; // Begin step pulse.
   }
+#endif
 #endif
 
 
@@ -498,14 +544,23 @@ void st_reset()
   st.dir_outbits = dir_port_invert_mask; // Initialize direction bits to default.
 
   // Initialize step and direction port pins.
+  #ifdef PSOC
+  STEP_CONTROL_REG_Write(step_port_invert_mask);
+  STEP_DIR_CONTROL_REG_Write(dir_port_invert_mask);
+  #else
   STEP_PORT = (STEP_PORT & ~STEP_MASK) | step_port_invert_mask;
   DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | dir_port_invert_mask;
+  #endif
 }
 
 
 // Initialize and start the stepper motor subsystem
 void stepper_init()
 {
+  #ifdef PSOC
+  CLOCK_STEP_Start();
+  ISR_STEP_StartEx(isr_stepper_handler);
+  #else
   // Configure step and direction interface pins
   STEP_DDR |= STEP_MASK;
   STEPPERS_DISABLE_DDR |= 1<<STEPPERS_DISABLE_BIT;
@@ -526,6 +581,7 @@ void stepper_init()
   TIMSK0 |= (1<<TOIE0); // Enable Timer0 overflow interrupt
   #ifdef STEP_PULSE_DELAY
     TIMSK0 |= (1<<OCIE0A); // Enable Timer0 Compare Match A interrupt
+  #endif
   #endif
 }
 

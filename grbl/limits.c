@@ -32,6 +32,7 @@
 
 void limits_init()
 {
+  #ifndef PSOC
   LIMIT_DDR &= ~(LIMIT_MASK); // Set as input pins
 
   #ifdef DISABLE_LIMIT_PIN_PULL_UP
@@ -39,18 +40,26 @@ void limits_init()
   #else
     LIMIT_PORT |= (LIMIT_MASK);  // Enable internal pull-up resistors. Normal high operation.
   #endif
+  #endif
 
   if (bit_istrue(settings.flags,BITFLAG_HARD_LIMIT_ENABLE)) {
+    #ifdef PSOC
+    LIMIT_STATUS_REG_InterruptEnable();
+    ISR_LIMITS_StartEx(isr_limit_handler);
+    #else
     LIMIT_PCMSK |= LIMIT_MASK; // Enable specific pins of the Pin Change Interrupt
     PCICR |= (1 << LIMIT_INT); // Enable Pin Change Interrupt
+    #endif
   } else {
     limits_disable();
   }
 
+  #ifndef PSOC
   #ifdef ENABLE_SOFTWARE_DEBOUNCE
     MCUSR &= ~(1<<WDRF);
     WDTCSR |= (1<<WDCE) | (1<<WDE);
     WDTCSR = (1<<WDP0); // Set time-out at ~32msec.
+  #endif
   #endif
 }
 
@@ -58,8 +67,13 @@ void limits_init()
 // Disables hard limits.
 void limits_disable()
 {
+  #ifdef PSOC
+  LIMIT_STATUS_REG_InterruptDisable();
+  ISR_LIMITS_Stop();
+  #else
   LIMIT_PCMSK &= ~LIMIT_MASK;  // Disable specific pins of the Pin Change Interrupt
   PCICR &= ~(1 << LIMIT_INT);  // Disable Pin Change Interrupt
+  #endif
 }
 
 
@@ -69,6 +83,9 @@ void limits_disable()
 uint8_t limits_get_state()
 {
   uint8_t limit_state = 0;
+  #ifdef PSOC
+  limit_state = LIMIT_STATUS_REG_Read();
+  #else
   uint8_t pin = (LIMIT_PIN & LIMIT_MASK);
   #ifdef INVERT_LIMIT_PIN_MASK
     pin ^= INVERT_LIMIT_PIN_MASK;
@@ -80,6 +97,7 @@ uint8_t limits_get_state()
       if (pin & get_limit_pin_mask(idx)) { limit_state |= (1 << idx); }
     }
   }
+  #endif
   return(limit_state);
 }
 
@@ -96,7 +114,11 @@ uint8_t limits_get_state()
 // special pinout for an e-stop, but it is generally recommended to just directly connect
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
 #ifndef ENABLE_SOFTWARE_DEBOUNCE
+  #ifdef PSOC
+  void isr_limit_handler ()
+  #else
   ISR(LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process.
+  #endif
   {
     // Ignore limit switches if already in an alarm state or in-process of executing an alarm.
     // When in the alarm state, Grbl should have been reset or will force a reset, so any pending

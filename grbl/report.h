@@ -19,6 +19,8 @@
 */
 #ifndef report_h
 #define report_h
+  
+#include <stdint.h>
 
 // Define Grbl status codes. Valid values (0-255)
 #define STATUS_OK 0

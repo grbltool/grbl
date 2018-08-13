@@ -23,6 +23,13 @@
 #define serial_h
 
 
+#include "config.h"
+#include <stdint.h>
+  
+#ifdef PSOC
+  void isr_rx_handler();
+#endif
+  
 #ifndef RX_BUFFER_SIZE
   #define RX_BUFFER_SIZE 128
 #endif

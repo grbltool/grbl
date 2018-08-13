@@ -21,6 +21,8 @@
 
 #ifndef spindle_control_h
 #define spindle_control_h
+  
+#include <stdint.h>
 
 #define SPINDLE_NO_SYNC false
 #define SPINDLE_FORCE_SYNC true

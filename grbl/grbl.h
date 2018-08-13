@@ -21,9 +21,19 @@
 #ifndef grbl_h
 #define grbl_h
 
+#include "config.h"
+
 // Grbl versioning system
 #define GRBL_VERSION "1.1g"
 #define GRBL_VERSION_BUILD "20180614"
+
+#ifdef PSOC
+
+#include <project.h>
+#include <strings.h>
+#include <stdio.h>
+
+#else
 
 // Define standard libraries used by Grbl.
 #include <avr/io.h>
@@ -31,15 +41,18 @@
 #include <avr/interrupt.h>
 #include <avr/wdt.h>
 #include <util/delay.h>
-#include <math.h>
 #include <inttypes.h>
-#include <string.h>
-#include <stdlib.h>
+
+#endif
+
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
+#include <math.h>
 
 // Define the Grbl system include files. NOTE: Do not alter organization.
-#include "config.h"
+//#include "config.h"
 #include "nuts_bolts.h"
 #include "settings.h"
 #include "system.h"
@@ -60,6 +73,17 @@
 #include "spindle_control.h"
 #include "stepper.h"
 #include "jog.h"
+
+#ifdef PSOC
+
+#include "lcd_report.h"
+
+#define GRBL_PORT    "PSoC_Grbl"
+#define _delay_ms CyDelay  // map to standardd PSOC function
+#define _delay_us CyDelayUs  // map to standardd PSOC function
+#define PSTR  // define this as blank to do less conversion of stock grbl to PSoc
+
+#endif
 
 // ---------------------------------------------------------------------------------------
 // COMPILE-TIME ERROR CHECKING OF DEFINE VALUES:

@@ -21,6 +21,12 @@
 *                         $Revision: 1.6 $
 *                         $Date: Friday, February 11, 2005 07:16:44 UTC $
 ****************************************************************************/
+
+#include "grbl.h"
+
+#ifdef PSOC
+#include "PSOC_EEPROM.h"
+#else  
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
@@ -36,6 +42,7 @@
 
 /* Define to reduce code size. */
 #define EEPROM_IGNORE_SELFPROG //!< Remove SPM flag polling.
+#endif
 
 /*! \brief  Read byte from EEPROM.
  *
@@ -48,10 +55,14 @@
  */
 unsigned char eeprom_get_char( unsigned int addr )
 {
-	do {} while( EECR & (1<<EEPE) ); // Wait for completion of previous write.
+  #ifdef PSOC
+	return PSOC_EEPROM_ReadByte(addr);
+  #else
+  do {} while( EECR & (1<<EEPE) ); // Wait for completion of previous write.
 	EEAR = addr; // Set EEPROM address register.
 	EECR = (1<<EERE); // Start EEPROM read operation.
 	return EEDR; // Return the byte read from EEPROM.
+  #endif
 }
 
 /*! \brief  Write byte to EEPROM.
@@ -73,6 +84,9 @@ unsigned char eeprom_get_char( unsigned int addr )
  */
 void eeprom_put_char( unsigned int addr, unsigned char new_value )
 {
+  #ifdef PSOC
+    PSOC_EEPROM_WriteByte(new_value, addr);
+  #else
 	char old_value; // Old EEPROM value.
 	char diff_mask; // Difference mask, i.e. old value XOR new value.
 
@@ -122,6 +136,7 @@ void eeprom_put_char( unsigned int addr, unsigned char new_value )
 	}
 	
 	sei(); // Restore interrupt flag state.
+  #endif
 }
 
 // Extensions added as part of Grbl 

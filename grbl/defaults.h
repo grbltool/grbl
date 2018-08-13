@@ -26,6 +26,8 @@
    NOTE: Ensure one and only one of these DEFAULTS_XXX values is defined in config.h */
 
 #ifndef defaults_h
+#define defaults_h
+ #include "config.h"
 
 #ifdef DEFAULTS_GRBLMILL
 
@@ -50,8 +52,6 @@
   #define DEFAULT_DIRECTION_INVERT_MASK ( (1<<Y_AXIS) | (1<<Z_AXIS) )  // junand 15.03.2015, X-Achse bereits in richtiger Richtung
   #define DEFAULT_STEPPER_IDLE_LOCK_TIME 25 // msec (0-254, 255 keeps steppers enabled)
   #define DEFAULT_STATUS_REPORT_MASK 1 // MPos enabled
-//  #define DEFAULT_STATUS_REPORT_MASK ((BITFLAG_RT_STATUS_MACHINE_POSITION)|(BITFLAG_RT_STATUS_WORK_POSITION))
-//  #define DEFAULT_STATUS_REPORT_MASK ((BITFLAG_RT_STATUS_MACHINE_POSITION)|(BITFLAG_RT_STATUS_WORK_POSITION)|(BITFLAG_RT_STATUS_PLANNER_BUFFER))
   #define DEFAULT_JUNCTION_DEVIATION 0.01 // mm
   #define DEFAULT_ARC_TOLERANCE 0.002 // mm
   #define DEFAULT_REPORT_INCHES 0 // false

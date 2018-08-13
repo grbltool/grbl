@@ -21,6 +21,8 @@
 
 #ifndef stepper_h
 #define stepper_h
+  
+#include "config.h"
 
 #ifndef SEGMENT_BUFFER_SIZE
   #define SEGMENT_BUFFER_SIZE 6

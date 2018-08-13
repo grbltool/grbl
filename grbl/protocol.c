@@ -149,8 +149,17 @@ void protocol_main_loop()
         }
 
       }
-    }
+      
+      #ifdef PSOC
+      // Execute and LCD print status
+      if (exec_lcd_status) { 
+        lcd_report_realtime(); 
+        exec_lcd_status = false;
+      }
+      #endif
 
+    }
+	
     // If there are no more characters in the serial read buffer to be processed and executed,
     // this indicates that g-code streaming has either filled the planner buffer or has
     // completed. In either case, auto-cycle start, if enabled, any queued moves.
@@ -206,6 +215,15 @@ void protocol_execute_realtime()
 {
   protocol_exec_rt_system();
   if (sys.suspend) { protocol_exec_rt_suspend(); }
+  
+  #ifdef PSOC
+  // Execute and LCD print status
+  if (exec_lcd_status) { 
+    lcd_report_realtime(); 
+    exec_lcd_status = false;
+  }
+  #endif
+  
 }
 
 

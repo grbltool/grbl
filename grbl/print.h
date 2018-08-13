@@ -22,6 +22,7 @@
 #ifndef print_h
 #define print_h
 
+#include <stdint.h>
 
 void printString(const char *s);
 

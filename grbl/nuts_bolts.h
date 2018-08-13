@@ -21,6 +21,8 @@
 
 #ifndef nuts_bolts_h
 #define nuts_bolts_h
+  
+#include <stdint.h>
 
 #define false 0
 #define true 1

@@ -23,6 +23,13 @@
 #define limits_h
 
 
+#include <stdint.h>
+#include "config.h"
+
+#ifdef PSOC
+  void isr_limit_handler ();
+#endif
+  
 // Initialize the limits module
 void limits_init();
 

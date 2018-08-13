@@ -28,9 +28,11 @@ uint8_t serial_rx_buffer[RX_RING_BUFFER];
 uint8_t serial_rx_buffer_head = 0;
 volatile uint8_t serial_rx_buffer_tail = 0;
 
+#ifndef PSOC
 uint8_t serial_tx_buffer[TX_RING_BUFFER];
 uint8_t serial_tx_buffer_head = 0;
 volatile uint8_t serial_tx_buffer_tail = 0;
+#endif
 
 
 // Returns the number of bytes available in the RX serial buffer.
@@ -51,7 +53,7 @@ uint8_t serial_get_rx_buffer_count()
   return (RX_BUFFER_SIZE - (rtail-serial_rx_buffer_head));
 }
 
-
+#ifndef PSOC
 // Returns the number of bytes used in the TX serial buffer.
 // NOTE: Not used except for debugging and ensuring no TX bottlenecks.
 uint8_t serial_get_tx_buffer_count()
@@ -60,10 +62,15 @@ uint8_t serial_get_tx_buffer_count()
   if (serial_tx_buffer_head >= ttail) { return(serial_tx_buffer_head-ttail); }
   return (TX_RING_BUFFER - (ttail-serial_tx_buffer_head));
 }
+#endif
 
 
 void serial_init()
 {
+  #ifdef PSOC
+  UART_Start();
+  ISR_UART_RX_StartEx(isr_rx_handler);
+  #else
   // Set baud rate
   #if BAUD_RATE < 57600
     uint16_t UBRR0_value = ((F_CPU / (8L * BAUD_RATE)) - 1)/2 ;
@@ -77,6 +84,7 @@ void serial_init()
 
   // enable rx, tx, and interrupt on complete reception of a byte
   UCSR0B |= (1<<RXEN0 | 1<<TXEN0 | 1<<RXCIE0);
+  #endif
 
   // defaults to 8-bit, no parity, 1 stop bit
 }
@@ -84,6 +92,9 @@ void serial_init()
 
 // Writes one byte to the TX serial buffer. Called by main program.
 void serial_write(uint8_t data) {
+  #ifdef PSOC
+  UART_PutChar(data);
+  #else
   // Calculate next head
   uint8_t next_head = serial_tx_buffer_head + 1;
   if (next_head == TX_RING_BUFFER) { next_head = 0; }
@@ -100,9 +111,11 @@ void serial_write(uint8_t data) {
 
   // Enable Data Register Empty Interrupt to make sure tx-streaming is running
   UCSR0B |=  (1 << UDRIE0);
+  #endif
 }
 
 
+#ifndef PSOC
 // Data Register Empty Interrupt handler
 ISR(SERIAL_UDRE)
 {
@@ -121,6 +134,7 @@ ISR(SERIAL_UDRE)
   if (tail == serial_tx_buffer_head) { UCSR0B &= ~(1 << UDRIE0); }
 }
 
+#endif
 
 // Fetches the first byte in the serial read buffer. Called by main program.
 uint8_t serial_read()
@@ -140,9 +154,15 @@ uint8_t serial_read()
 }
 
 
+#ifdef PSOC
+void isr_rx_handler()
+{
+  uint8_t data = UART_GetChar();
+#else
 ISR(SERIAL_RX)
 {
   uint8_t data = UDR0;
+#endif  
   uint8_t next_head;
 
   // Pick off realtime command characters directly from the serial stream. These characters are
@@ -161,8 +181,10 @@ ISR(SERIAL_RX)
               system_set_exec_state_flag(EXEC_MOTION_CANCEL); 
             }
             break; 
+          #ifndef PSOC
           #ifdef DEBUG
             case CMD_DEBUG_REPORT: {uint8_t sreg = SREG; cli(); bit_true(sys_rt_exec_debug,EXEC_DEBUG_REPORT); SREG = sreg;} break;
+          #endif
           #endif
           case CMD_FEED_OVR_RESET: system_set_exec_motion_override_flag(EXEC_FEED_OVR_RESET); break;
           case CMD_FEED_OVR_COARSE_PLUS: system_set_exec_motion_override_flag(EXEC_FEED_OVR_COARSE_PLUS); break;

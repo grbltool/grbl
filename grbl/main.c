@@ -1,4 +1,4 @@
-/*
+  /*
   main.c - An embedded CNC Controller with rs274/ngc (g-code) support
   Part of Grbl
 
@@ -19,11 +19,15 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef PSOC
+#include <project.h>
+#endif
 #include "grbl.h"
 
 
 // Declare system global variable structure
 system_t sys;
+
 int32_t sys_position[N_AXIS];      // Real-time machine (aka home) position vector in steps.
 int32_t sys_probe_position[N_AXIS]; // Last probe position in machine coordinates and steps.
 volatile uint8_t sys_probe_state;   // Probing state value.  Used to coordinate the probing cycle with stepper ISR.
@@ -38,14 +42,24 @@ volatile uint8_t sys_rt_exec_accessory_override; // Global realtime executor bit
 
 int main(void)
 {
+
+  #ifdef PSOC
+  CyGlobalIntEnable; /* Enable global interrupts. */
+  #endif
+    
   // Initialize system upon power-up.
+  #ifdef PSOC
+  //lcd_init();
+  #endif
   serial_init();   // Setup serial baud rate and interrupts
   settings_init(); // Load Grbl settings from EEPROM
   stepper_init();  // Configure stepper pins and interrupt timers
   system_init();   // Configure pinout pins and pin-change interrupt
 
   memset(sys_position,0,sizeof(sys_position)); // Clear machine position.
+  #ifndef PSOC
   sei(); // Enable interrupts
+  #endif
 
   // Initialize system state.
   #ifdef FORCE_INITIALIZATION_ALARM
@@ -66,6 +80,10 @@ int main(void)
     if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { sys.state = STATE_ALARM; }
   #endif
 
+  #ifdef PSOC
+    //ISR_LCD_UPDATE_StartEx(ISR_lcd);
+  #endif
+  
   // Grbl initialization loop upon power-up or a system abort. For the latter, all processes
   // will return to this loop to be cleanly re-initialized.
   for(;;) {
@@ -100,6 +118,9 @@ int main(void)
 
     // Print welcome message. Indicates an initialization has occured at power-up or with a reset.
     report_init_message();
+	#ifdef PSOC
+	//lcd_report_init_message();
+	#endif
 
     // Start Grbl main loop. Processes program inputs and executes them.
     protocol_main_loop();
