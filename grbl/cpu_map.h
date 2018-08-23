@@ -30,7 +30,7 @@
 
 #ifdef CPU_MAP_CY8CKIT_059
     
-  #define F_CPU 24000000UL    // 24 MHz
+  #define F_CPU 48000000UL    // 48 MHz
   
   #define X_STEP_BIT        0 // Mapped in hardware schematic
   #define Y_STEP_BIT        1 // Mapped in hardware schematic
