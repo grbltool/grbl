@@ -427,8 +427,8 @@
 // available RAM, like when re-compiling for a Mega2560. Or decrease if the Arduino begins to
 // crash due to the lack of available RAM or if the CPU is having trouble keeping up with planning
 // new incoming motions as they are executed.
-  #ifdef PSOC
-#define BLOCK_BUFFER_SIZE 32 // Uncomment to override default in planner.h.
+#ifdef PSOC
+#define BLOCK_BUFFER_SIZE 32  // more memory size available in psoc
 #else
 // #define BLOCK_BUFFER_SIZE 16 // Uncomment to override default in planner.h.
 #endif
