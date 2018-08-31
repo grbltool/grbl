@@ -71,7 +71,7 @@ uint8_t system_control_get_state()
 // its ready. This works exactly like the character-based realtime commands when picked off
 // directly from the incoming serial data stream.
 #ifdef PSOC
-void isr_control_handler()
+CY_ISR(isr_control_handler)
 #else
 ISR(CONTROL_INT_vect)
 #endif

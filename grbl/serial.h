@@ -27,7 +27,8 @@
 #include <stdint.h>
   
 #ifdef PSOC
-  void isr_rx_handler();
+  #include "cytypes.h"
+  CY_ISR_PROTO(isr_rx_handler);
 #endif
   
 #ifndef RX_BUFFER_SIZE

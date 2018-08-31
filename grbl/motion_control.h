@@ -21,6 +21,8 @@
 
 #ifndef motion_control_h
 #define motion_control_h
+  
+#include "planner.h"
 
 
 // System motion commands must have a line number of zero.

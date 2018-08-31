@@ -115,7 +115,7 @@ uint8_t limits_get_state()
 // your e-stop switch to the Arduino reset pin, since it is the most correct way to do this.
 #ifndef ENABLE_SOFTWARE_DEBOUNCE
   #ifdef PSOC
-  void isr_limit_handler ()
+  CY_ISR(isr_limit_handler)
   #else
   ISR(LIMIT_INT_vect) // DEFAULT: Limit pin change interrupt process.
   #endif

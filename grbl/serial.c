@@ -155,7 +155,7 @@ uint8_t serial_read()
 
 
 #ifdef PSOC
-void isr_rx_handler()
+CY_ISR(isr_rx_handler)
 {
   uint8_t data = UART_GetChar();
 #else

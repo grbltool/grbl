@@ -26,7 +26,8 @@
 #include "nuts_bolts.h"
   
 #ifdef PSOC
-  void isr_control_handler();
+  #include "cytypes.h"
+  CY_ISR_PROTO(isr_control_handler);
 #endif
 
 // Define system executor bit map. Used internally by realtime protocol as realtime command flags,

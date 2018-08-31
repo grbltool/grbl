@@ -27,7 +27,8 @@
 #include "config.h"
 
 #ifdef PSOC
-  void isr_limit_handler ();
+  #include "cytypes.h"
+  CY_ISR_PROTO(isr_limit_handler);
 #endif
   
 // Initialize the limits module

@@ -21,6 +21,10 @@
 
 #ifndef planner_h
 #define planner_h
+  
+#include <stdint.h>
+#include "config.h"
+#include "nuts_bolts.h"
 
 
 // The number of linear motions that can be in the plan at any give time

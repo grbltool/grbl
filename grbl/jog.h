@@ -22,6 +22,7 @@
 #define jog_h
 
 #include "gcode.h"
+#include "planner.h"
 
 // System motion line numbers must be zero.
 #define JOG_LINE_NUMBER 0
