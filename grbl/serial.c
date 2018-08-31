@@ -22,7 +22,9 @@
 #include "grbl.h"
 
 #define RX_RING_BUFFER (RX_BUFFER_SIZE+1)
+#ifndef PSOC
 #define TX_RING_BUFFER (TX_BUFFER_SIZE+1)
+#endif
 
 uint8_t serial_rx_buffer[RX_RING_BUFFER];
 uint8_t serial_rx_buffer_head = 0;
