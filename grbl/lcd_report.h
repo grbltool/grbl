@@ -14,12 +14,7 @@
 
 #include <stdint.h>
 #include <project.h>
-  
-uint8_t exec_lcd_status; // flag to show lcd_status
 
-#define LCD_UNIT_MM 0
-#define LCD_UNIT_IN 1  
-  
 #define MAIN_SCREEN 0
 #define CMD_SCREEN 1
 #define PROBE_SCREEN 2
@@ -58,10 +53,9 @@ uint8_t exec_lcd_status; // flag to show lcd_status
 #define LCD_PRB_DIST_MIN 20
 #define LCD_PRB_DIST_MAX 200
   
-void isr_quad_encoder_switch_handler();
 void lcd_init();
-//void ISR_lcd();
-CY_ISR_PROTO(ISR_LCD_UPDATE);
+CY_ISR_PROTO(isr_lcd_update);
+CY_ISR_PROTO(isr_quad_decoder_switch_handler);
 
 void lcd_report_init_message();
 void lcd_report_realtime();

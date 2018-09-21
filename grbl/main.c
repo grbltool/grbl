@@ -19,10 +19,11 @@
   along with Grbl.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "grbl.h"
+
 #ifdef PSOC
 #include <project.h>
 #endif
-#include "grbl.h"
 
 
 // Declare system global variable structure
@@ -48,9 +49,6 @@ int main(void)
   #endif
     
   // Initialize system upon power-up.
-  #ifdef PSOC
-  //lcd_init();
-  #endif
   serial_init();   // Setup serial baud rate and interrupts
   settings_init(); // Load Grbl settings from EEPROM
   stepper_init();  // Configure stepper pins and interrupt timers
@@ -80,10 +78,6 @@ int main(void)
     if (bit_istrue(settings.flags,BITFLAG_HOMING_ENABLE)) { sys.state = STATE_ALARM; }
   #endif
 
-  #ifdef PSOC
-    //ISR_LCD_UPDATE_StartEx(ISR_lcd);
-  #endif
-  
   // Grbl initialization loop upon power-up or a system abort. For the latter, all processes
   // will return to this loop to be cleanly re-initialized.
   for(;;) {
@@ -118,9 +112,10 @@ int main(void)
 
     // Print welcome message. Indicates an initialization has occured at power-up or with a reset.
     report_init_message();
-	#ifdef PSOC
-	//lcd_report_init_message();
-	#endif
+  	#ifdef PSOC
+    lcd_init();
+  	lcd_report_init_message();
+  	#endif
 
     // Start Grbl main loop. Processes program inputs and executes them.
     protocol_main_loop();

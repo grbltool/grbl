@@ -32,7 +32,8 @@ void spindle_init()
   #ifdef VARIABLE_SPINDLE
 
     #ifdef PSOC
-    SPINDLE_PWM_Start();
+    // do nothing, pwm will be started/stoped on start/stop
+    //SPINDLE_PWM_Start();
     #else
     // Configure variable spindle PWM and enable pin, if requried. On the Uno, PWM and enable are
     // combined unless configured otherwise.
@@ -113,7 +114,8 @@ void spindle_stop()
 {
   #ifdef VARIABLE_SPINDLE
     #ifdef PSOC
-      SPINDLE_PWM_WriteCompare(0);
+      //SPINDLE_PWM_WriteCompare(0);
+      SPINDLE_PWM_Stop ();
     #else
     SPINDLE_TCCRA_REGISTER &= ~(1<<SPINDLE_COMB_BIT); // Disable PWM. Output voltage is zero.
     #ifdef USE_SPINDLE_DIR_AS_ENABLE_PIN
@@ -144,6 +146,7 @@ void spindle_stop()
   void spindle_set_speed(uint8_t pwm_value)
   {
     #ifdef PSOC
+      SPINDLE_PWM_Start();
       SPINDLE_PWM_WriteCompare(pwm_value);
     #else
     SPINDLE_OCR_REGISTER = pwm_value; // Set PWM output level.
@@ -162,13 +165,19 @@ void spindle_stop()
         #endif
       }
     #else
-      #ifndef PSOC
       if (pwm_value == SPINDLE_PWM_OFF_VALUE) {
+        #ifdef PSOC
+        SPINDLE_PWM_Stop();
+        #else
         SPINDLE_TCCRA_REGISTER &= ~(1<<SPINDLE_COMB_BIT); // Disable PWM. Output voltage is zero.
+        #endif
       } else {
+        #ifdef PSOC
+        // do nothing
+        #else
         SPINDLE_TCCRA_REGISTER |= (1<<SPINDLE_COMB_BIT); // Ensure PWM output is enabled.
+        #endif
       }
-      #endif
     #endif
   }
 

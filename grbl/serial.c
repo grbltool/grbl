@@ -27,7 +27,7 @@
 #endif
 
 uint8_t serial_rx_buffer[RX_RING_BUFFER];
-uint8_t serial_rx_buffer_head = 0;
+volatile uint8_t serial_rx_buffer_head = 0;
 volatile uint8_t serial_rx_buffer_tail = 0;
 
 #ifndef PSOC
@@ -41,8 +41,9 @@ volatile uint8_t serial_tx_buffer_tail = 0;
 uint8_t serial_get_rx_buffer_available()
 {
   uint8_t rtail = serial_rx_buffer_tail; // Copy to limit multiple calls to volatile
-  if (serial_rx_buffer_head >= rtail) { return(RX_BUFFER_SIZE - (serial_rx_buffer_head-rtail)); }
-  return((rtail-serial_rx_buffer_head-1));
+  uint8_t rhead = serial_rx_buffer_head; // Copy to limit multiple calls to volatile
+  if (rhead >= rtail) { return(RX_BUFFER_SIZE - (rhead-rtail)); }
+  return((rtail-rhead-1));
 }
 
 

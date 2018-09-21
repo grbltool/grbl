@@ -18,7 +18,6 @@ int8 menu_item_selected = false;
 int8 lcd_cursor = 4;
 int8 lcd_cursor_max = 6;
 int8 switch_clicked = false;
-int8 lcd_units = LCD_UNIT_MM;
 int16 lcd_FRO = 100; 
 int16 lcd_SRO = 100;
 // TO DO store these in EEPROM 
@@ -26,79 +25,99 @@ float lcd_probe_thickness = 15.0;
 int16 lcd_probe_rate = 100;
 int16 lcd_probe_dist = 120;
 
+static uint8 led_state = true;
+
 void lcd_init()
 {
-    LCD_Start();
-    LCD_LoadCustomFonts(LCD_customFonts); 
-    LCD_WriteControl(LCD_CLEAR_DISPLAY);
+
+    LED_CONTROL_REG_Write(led_state);
+
+    I2C_LCD_4x20_Start();
+  
+    LCD_4x20_Start();
+    LCD_4x20_LoadCustomFonts(LCD_4x20_customFonts); 
+    LCD_4x20_WriteControl(LCD_4x20_CLEAR_DISPLAY);
+    //ISR_LCD_UPDATE_StartEx(isr_lcd_update);
     
     QUAD_DECODER_Start();
-    ISR_QUAD_DECODER_SWITCH_StartEx(isr_quad_encoder_switch_handler);
-    exec_lcd_status = false;
+    //ISR_QUAD_DECODER_SWITCH_StartEx(isr_quad_decoder_switch_handler);
 }
 
-void enc_sw_isr_handler()
+CY_ISR(isr_quad_decoder_switch_handler)
 {
   switch_clicked = true;
 }
 
 void lcd_report_init_message()
 {
-    LCD_WriteControl(LCD_CLEAR_DISPLAY);
-    LCD_Position(0u, 3u);
+    LCD_4x20_WriteControl(LCD_4x20_CLEAR_DISPLAY);
+    LCD_4x20_Position(0u, 3u);
     
     /* Output demo start message */
-    LCD_PrintString(GRBL_PORT " " GRBL_VERSION);
+    LCD_4x20_PrintString(GRBL_PORT " " GRBL_VERSION);
     delay_ms(1000);
-    LCD_WriteControl(LCD_CLEAR_DISPLAY);
+    LCD_4x20_WriteControl(LCD_4x20_CLEAR_DISPLAY);
     
     lcd_report_realtime();
     
 }
 
-CY_ISR(ISR_LCD_UPDATE)
+CY_ISR(isr_lcd_update)
 {
-  exec_lcd_status = true;
+  
+  led_state = led_state ? false : true;
+  LED_CONTROL_REG_Write(led_state);
+  // Execute and LCD print status
+  lcd_report_realtime(); 
 }
 
 void get_state(char *foo)
 {        
     // pad them to same length
     switch (sys.state) {
-    case STATE_IDLE: strcpy(foo," Idle ");; break;
-    case STATE_CYCLE: strcpy(foo," Run  "); break;
-    case STATE_HOLD: strcpy(foo," Hold "); break;
-    case STATE_HOMING: strcpy(foo," Home "); break;
-    case STATE_ALARM: strcpy(foo," Alarm"); break;
-    case STATE_CHECK_MODE: strcpy(foo," Check"); break;
-    case STATE_SAFETY_DOOR: strcpy(foo," Door "); break;
-    default:strcpy(foo,"  ?  "); break;
+    case STATE_IDLE: strcpy(foo,"Idle ");; break;
+    case STATE_CYCLE: strcpy(foo,"Run  "); break;
+    case STATE_HOLD: strcpy(foo,"Hold "); break;
+    case STATE_HOMING: strcpy(foo,"Home "); break;
+    case STATE_ALARM: strcpy(foo,"Alarm"); break;
+    case STATE_CHECK_MODE: strcpy(foo,"Check"); break;
+    case STATE_SAFETY_DOOR: strcpy(foo,"Door "); break;
+    default:strcpy(foo," ?  "); break;
   }     
+}
+
+void print_coord ( char* buf, float value ) {
+
+  char *sign = (value < 0) ? "-" : "+";
+  float tmp = (value < 0) ? -value : value;
+
+  int i1 = tmp;
+  float frac = tmp - i1;
+  int i2 = trunc(frac * 1000);  // 2 decimals
+
+  // Print as parts, note that you need 0-padding for fractional bit.
+
+  sprintf (buf, "%s%d.%03d", sign, i1, i2);
+  
 }
 
 void lcd_report_realtime()
 {
-  uint8_t switches = false;  // currently used for hardware checking.
   uint8_t idx;
   char stat[12];    
   char fstr[20];
   char line[20];
-  char num_format[] = "%+8.2f";
-  int32_t current_position[N_AXIS]; // Copy current state of the system position variable
-  memcpy(current_position,sys_position,sizeof(sys_position));
-  float print_position[N_AXIS];
-  
-  
-    
+
   switch (lcd_screen)
   {
     case MAIN_SCREEN:   // ====================================================
       // Current machine state
       lcd_cursor_max = 7;
       get_state(stat);
-      LCD_Position(0u, 0u);
-      LCD_PrintString(stat);
-      
+      LCD_4x20_Position(0u, 1u);
+      LCD_4x20_PrintString(stat);
+
+#ifdef XYZ      
       if (switch_clicked) {
         switch_clicked = false;
         switch (lcd_cursor)
@@ -142,85 +161,82 @@ void lcd_report_realtime()
             lcd_screen = CMD_SCREEN; 
             lcd_cursor = 0;
             QUAD_DECODER_SetCounter(lcd_cursor);
-            LCD_WriteControl(LCD_CLEAR_DISPLAY);
+            LCD_4x20_WriteControl(LCD_4x20_CLEAR_DISPLAY);
           break;
             
         }
         if (lcd_screen != MAIN_SCREEN) break;       
       }
-      
-    if (switches)
-    {
-      LCD_Position(1u, 0u);
-      LCD_PrintString("Limit:");
-      lcd_unsigned_int8(LIMIT_STATUS_REG_Read(), 2, 3);      
-      
-      LCD_Position(2u, 0u);
-      LCD_PrintString("Ctl:");    
-      lcd_unsigned_int8(CONTROL_STATUS_REG_Read(), 2, 4);
-      
-      LCD_Position(3u, 0u);
-      LCD_PrintString("Probe:");
-      lcd_unsigned_int8(PROBE_STATUS_REG_Read(), 2, 1);
-      break;
-    }
-    
-      system_convert_array_steps_to_mpos(print_position,current_position); // get the position in MCS
-      
-      // convert it to WCS      
+#endif      
+
+#ifdef XYZ
+      if (switches) {
+        LCD_4x20_Position(1u, 0u);
+        LCD_4x20_PrintString("Limit:");
+        lcd_unsigned_int8(LIMIT_STATUS_REG_Read(), 2, 3);      
+        
+        LCD_4x20_Position(2u, 0u);
+        LCD_4x20_PrintString("Ctl:");    
+        lcd_unsigned_int8(CONTROL_STATUS_REG_Read(), 2, 4);
+        
+        LCD_4x20_Position(3u, 0u);
+        LCD_4x20_PrintString("Probe:");
+        lcd_unsigned_int8(PROBE_STATUS_REG_Read(), 2, 1);
+        break;
+      }
+#endif    
+
+      int32_t current_position[N_AXIS]; // Copy current state of the system position variable
+      memcpy(current_position,sys_position,sizeof(sys_position));
+      float print_position[N_AXIS];
+      system_convert_array_steps_to_mpos(print_position,current_position);
+      float wco[N_AXIS];
       for (idx=0; idx< N_AXIS; idx++) {
-      print_position[idx] -= gc_state.coord_system[idx]+gc_state.coord_offset[idx];
-        if (idx == TOOL_LENGTH_OFFSET_AXIS) { print_position[idx] -= gc_state.tool_length_offset; }
+        // Apply work coordinate offsets and tool length offset to current position.
+        wco[idx] = gc_state.coord_system[idx]+gc_state.coord_offset[idx];
+        if (idx == TOOL_LENGTH_OFFSET_AXIS) { wco[idx] += gc_state.tool_length_offset; }
+        print_position[idx] -= wco[idx];
       }
+
+      char buf [20];
       
-      // determine the units, set the number of decimals and convert to inches if req'd
-      LCD_Position(0u, 11u);
-      LCD_PrintString(" Unit:");
-      if (lcd_units == LCD_UNIT_MM) {
-        LCD_PrintString(" mm");
-        strcpy(num_format, "%+8.2f");
-      }
-      else { 
-          for (idx=0; idx< N_AXIS; idx++) {   // convert to inches
-            print_position[idx] /= MM_PER_INCH;  
-          }
-          LCD_PrintString(" in"); 
-          strcpy(num_format, "%+8.3f");
-      }
-      
-      // Do the DROs
-      LCD_Position(1u, 0u);
-      LCD_PrintString(" X");
-      sprintf(fstr, num_format, print_position[X_AXIS] ); 
-      LCD_PrintString(fstr);    
+      LCD_4x20_Position(1u, 1u);
+      LCD_4x20_PrintString("X");
+      print_coord ( buf, print_position[X_AXIS] );
+      sprintf(fstr, "%8s", buf ); 
+      LCD_4x20_PrintString(fstr);    
     
-      LCD_Position(2u, 0u);
-      LCD_PrintString(" Y");
-      sprintf(fstr, num_format, print_position[Y_AXIS] ); 
-      LCD_PrintString(fstr);      
+      LCD_4x20_Position(2u, 1u);
+      LCD_4x20_PrintString("Y");
+      print_coord ( buf, print_position[Y_AXIS] );
+      sprintf(fstr, "%8s", buf ); 
+      LCD_4x20_PrintString(fstr);      
       
-      LCD_Position(3u, 0u);
-      LCD_PrintString(" Z");
-      sprintf(fstr, num_format, print_position[Z_AXIS] ); 
-      LCD_PrintString(fstr);      
+      LCD_4x20_Position(3u, 1u);
+      LCD_4x20_PrintString("Z");
+      print_coord ( buf, print_position[Z_AXIS] );
+      sprintf(fstr, "%8s", buf ); 
+      LCD_4x20_PrintString(fstr);      
       
-      LCD_Position(1u, 11u);
-      LCD_PrintString(" FRO:");
+#ifdef XYZ
+      LCD_4x20_Position(1u, 12u);
+      LCD_4x20_PrintString("FRO:");
       sprintf(fstr, "%3d", lcd_FRO ); 
-      LCD_PrintString(fstr);
-      LCD_PrintString("%");
+      LCD_4x20_PrintString(fstr);
+      LCD_4x20_PrintString("%");
       
-      LCD_Position(2u, 11u);
-      LCD_PrintString(" SRO:");
+      LCD_4x20_Position(2u, 12u);
+      LCD_4x20_PrintString("SRO:");
       sprintf(fstr, "%3d", lcd_SRO ); 
-      LCD_PrintString(fstr);
-      LCD_PrintString("%");
+      LCD_4x20_PrintString(fstr);
+      LCD_4x20_PrintString("%");
+#endif      
       
-      LCD_Position(3u, 11u);
-      LCD_PrintString(" More ");
-      LCD_PutChar(LCD_CUSTOM_2);
-      
-      
+      LCD_4x20_Position(3u, 12u);
+      LCD_4x20_PrintString("More ");
+      //LCD_4x20_PutChar(LCD_4x20_CUSTOM_2);
+
+#ifdef XYZ
       if (menu_item_selected) {
         switch (lcd_cursor) {
          case MENU_ITEM_MAIN_FRO:
@@ -243,65 +259,58 @@ void lcd_report_realtime()
         QUAD_DECODER_SetCounter(lcd_cursor);
         
       }
-      
+#endif      
        
       
-      LCD_WriteControl(LCD_DISPLAY_ON_CURSOR_OFF);
-      switch (lcd_cursor)
-      {
+      LCD_4x20_WriteControl(LCD_4x20_DISPLAY_ON_CURSOR_OFF);
+      
+#ifdef XYZ      
+      switch (lcd_cursor) {
        case MENU_ITEM_MAIN_STATUS:
-        LCD_Position(0u, 0u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(0u, 0u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break;
        case MENU_ITEM_MAIN_X_DRO:
-        LCD_Position(1u, 0u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(1u, 0u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break;
        case MENU_ITEM_MAIN_Y_DRO:
-        LCD_Position(2u, 0u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(2u, 0u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break; 
        case MENU_ITEM_MAIN_Z_DRO:
-        LCD_Position(3u, 0u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(3u, 0u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break;
        case MENU_ITEM_MAIN_UNIT:
-        LCD_Position(0u, 11u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(0u, 11u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break;
        case MENU_ITEM_MAIN_FRO:
-        LCD_Position(1u, 11u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(1u, 11u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
         if (menu_item_selected) {
-          LCD_Position(1u, 11u);
-          LCD_WriteControl(LCD_CURSOR_WINK);
-        }
-        else {
-          
+          LCD_4x20_Position(1u, 11u);
+          LCD_4x20_WriteControl(LCD_4x20_CURSOR_WINK);
         }
        break;
        case MENU_ITEM_MAIN_SRO:
-        LCD_Position(2u, 11u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(2u, 11u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
         if (menu_item_selected) {
-          LCD_Position(2u, 11u);
-          LCD_WriteControl(LCD_CURSOR_WINK);
+          LCD_4x20_Position(2u, 11u);
+          LCD_4x20_WriteControl(LCD_4x20_CURSOR_WINK);
         }
-        else {
-          
-        }
-        
        break;
        case MENU_ITEM_MAIN_MORE:
-        LCD_Position(3u, 11u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(3u, 11u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break;       
       }
-      
-    
-      
+#endif      
     break; // main screen
-      
+
+#ifdef XYZ      
     case CMD_SCREEN:  // ============================================================
       lcd_cursor_max = 7;
       
@@ -312,7 +321,7 @@ void lcd_report_realtime()
           case 0: // return to main
             lcd_screen = MAIN_SCREEN; 
             lcd_cursor = 0;        
-            LCD_WriteControl(LCD_CLEAR_DISPLAY);
+            LCD_4x20_WriteControl(LCD_4x20_CLEAR_DISPLAY);
           break;
             
           case 1: // home axes
@@ -338,7 +347,7 @@ void lcd_report_realtime()
             lcd_cursor_max = 4;
             lcd_cursor = 0;
             QUAD_DECODER_SetCounter(lcd_cursor);
-            LCD_WriteControl(LCD_CLEAR_DISPLAY);
+            LCD_4x20_WriteControl(LCD_4x20_CLEAR_DISPLAY);
           break;  
             
           case 4:  // goto 0,0
@@ -356,7 +365,7 @@ void lcd_report_realtime()
           case 7: // sd card
             lcd_screen = SD_CARD_SCREEN; 
             lcd_cursor = 0;        
-            LCD_WriteControl(LCD_CLEAR_DISPLAY);
+            LCD_4x20_WriteControl(LCD_4x20_CLEAR_DISPLAY);
           break;  
             
         }
@@ -364,26 +373,26 @@ void lcd_report_realtime()
         if (lcd_screen != CMD_SCREEN) break;
       }
     
-      LCD_Position(0u, 0u);
-      LCD_PrintString(" Back ");
-      LCD_PutChar(LCD_CUSTOM_3);
-      LCD_Position(1u, 0u);
-      LCD_PrintString(" Home Axes");
-      LCD_Position(2u, 0u);
-      LCD_PrintString(" Top of Z");
-      LCD_Position(3u, 0u);
-      LCD_PrintString(" Z Probe ");
-      LCD_PutChar(LCD_CUSTOM_2);
+      LCD_4x20_Position(0u, 0u);
+      LCD_4x20_PrintString(" Back ");
+      LCD_4x20_PutChar(LCD_4x20_CUSTOM_3);
+      LCD_4x20_Position(1u, 0u);
+      LCD_4x20_PrintString(" Home Axes");
+      LCD_4x20_Position(2u, 0u);
+      LCD_4x20_PrintString(" Top of Z");
+      LCD_4x20_Position(3u, 0u);
+      LCD_4x20_PrintString(" Z Probe ");
+      LCD_4x20_PutChar(LCD_4x20_CUSTOM_2);
       
-      LCD_Position(0u, 11u);
-      LCD_PrintString(" Goto 0,0");
-      LCD_Position(1u, 11u);
-      LCD_PrintString(" Goto G28");
-      LCD_Position(2u, 11u);
-      LCD_PrintString(" Goto G30");
-      LCD_Position(3u, 11u);
-      LCD_PrintString(" SdCard ");
-      LCD_PutChar(LCD_CUSTOM_2);
+      LCD_4x20_Position(0u, 11u);
+      LCD_4x20_PrintString(" Goto 0,0");
+      LCD_4x20_Position(1u, 11u);
+      LCD_4x20_PrintString(" Goto G28");
+      LCD_4x20_Position(2u, 11u);
+      LCD_4x20_PrintString(" Goto G30");
+      LCD_4x20_Position(3u, 11u);
+      LCD_4x20_PrintString(" SdCard ");
+      LCD_4x20_PutChar(LCD_4x20_CUSTOM_2);
         
       if (menu_item_selected) {
       }
@@ -399,36 +408,36 @@ void lcd_report_realtime()
       switch (lcd_cursor)
       {
        case 0:
-        LCD_Position(0u, 0u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(0u, 0u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break;
        case 1:
-        LCD_Position(1u, 0u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(1u, 0u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break; 
        case 2:
-        LCD_Position(2u, 0u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(2u, 0u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break;
        case 3:
-        LCD_Position(3u, 0u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(3u, 0u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break;
        case 4:
-        LCD_Position(0u, 11u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(0u, 11u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break;
        case 5:
-        LCD_Position(1u, 11u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(1u, 11u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break;
        case 6:
-        LCD_Position(2u, 11u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(2u, 11u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break;
         case 7:
-        LCD_Position(3u, 11u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(3u, 11u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break; 
       }
         
@@ -442,11 +451,11 @@ void lcd_report_realtime()
         {
           case MENU_ITEM_PRB_BACK: // return to main
             lcd_screen = CMD_SCREEN;            
-            LCD_WriteControl(LCD_CLEAR_DISPLAY);
+            LCD_4x20_WriteControl(LCD_4x20_CLEAR_DISPLAY);
           break;
             
           case MENU_ITEM_PRB_PROBE:
-            LCD_WriteControl(LCD_CLEAR_DISPLAY);
+            LCD_4x20_WriteControl(LCD_4x20_CLEAR_DISPLAY);
             lcd_screen = MAIN_SCREEN;
             strcpy(line, "G91G38.2Z-");
             sprintf(fstr, "%d", lcd_probe_dist);
@@ -455,14 +464,14 @@ void lcd_report_realtime()
             sprintf(fstr, "%d", lcd_probe_rate);
             strcat(line, fstr);
             gc_execute_line(line);
-            LCD_Position(3u, 0u);
+            LCD_4x20_Position(3u, 0u);
             if (sys.probe_succeeded == false) {
               // TO DO Not sure if this works
-              LCD_PrintString("Failure");
+              LCD_4x20_PrintString("Failure");
             }
             else {
-              //LCD_Position(3u, 0u);
-              LCD_PrintString("Success");
+              //LCD_4x20_Position(3u, 0u);
+              LCD_4x20_PrintString("Success");
               sprintf(fstr, "%2.2f", lcd_probe_thickness);
               strcpy(line, "G10L20P0Z");
               strcat(line, fstr);
@@ -498,27 +507,27 @@ void lcd_report_realtime()
         if (lcd_screen != PROBE_SCREEN) break;
       }
       
-      LCD_Position(0u, 0u);
-      LCD_PrintString(" Back ");
-      LCD_PutChar(LCD_CUSTOM_3);
+      LCD_4x20_Position(0u, 0u);
+      LCD_4x20_PrintString(" Back ");
+      LCD_4x20_PutChar(LCD_4x20_CUSTOM_3);
       
-      LCD_Position(0u, 8u);
-      LCD_PrintString(" Begin Probe"); 
+      LCD_4x20_Position(0u, 8u);
+      LCD_4x20_PrintString(" Begin Probe"); 
       
-      LCD_Position(1u, 8u);
-      LCD_PrintString(" Thick:");
+      LCD_4x20_Position(1u, 8u);
+      LCD_4x20_PrintString(" Thick:");
       sprintf(fstr, "%2.2f", lcd_probe_thickness ); 
-      LCD_PrintString(fstr);
+      LCD_4x20_PrintString(fstr);
       
-      LCD_Position(2u, 8u);
-      LCD_PrintString(" Rate:");
+      LCD_4x20_Position(2u, 8u);
+      LCD_4x20_PrintString(" Rate:");
       sprintf(fstr, "%6d", lcd_probe_rate ); 
-      LCD_PrintString(fstr);
+      LCD_4x20_PrintString(fstr);
       
-      LCD_Position(3u, 8u);
-      LCD_PrintString(" Dist:");
+      LCD_4x20_Position(3u, 8u);
+      LCD_4x20_PrintString(" Dist:");
       sprintf(fstr, "%6d", lcd_probe_dist ); 
-      LCD_PrintString(fstr);
+      LCD_4x20_PrintString(fstr);
      
       if (menu_item_selected) {
       }
@@ -565,43 +574,43 @@ void lcd_report_realtime()
       switch (lcd_cursor)
       {
        case 0:
-        LCD_Position(0u, 0u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(0u, 0u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break;
        case 1:
-        LCD_Position(0u, 8u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(0u, 8u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break; 
        case 2:
-        LCD_Position(1u, 8u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(1u, 8u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break;
        case 3:
-        LCD_Position(2u, 8u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(2u, 8u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break;
        case 4:
-        LCD_Position(3u, 8u);
-        LCD_PutChar(LCD_CUSTOM_0);
+        LCD_4x20_Position(3u, 8u);
+        LCD_4x20_PutChar(LCD_4x20_CUSTOM_0);
        break;       
       }
       
     break;  
       
     case SD_CARD_SCREEN:
-      LCD_Position(0u, 0u);
-      LCD_PrintString(" Back ");
-      LCD_PutChar(LCD_CUSTOM_3);
+      LCD_4x20_Position(0u, 0u);
+      LCD_4x20_PrintString(" Back ");
+      LCD_4x20_PutChar(LCD_4x20_CUSTOM_3);
       
-      LCD_Position(2u, 0u);
-      LCD_PrintString("Feature not ready"); 
+      LCD_4x20_Position(2u, 0u);
+      LCD_4x20_PrintString("Feature not ready"); 
       
       if (switch_clicked) {
         
         lcd_screen = CMD_SCREEN; 
         lcd_cursor = 0;
         QUAD_DECODER_SetCounter(lcd_cursor);
-        LCD_WriteControl(LCD_CLEAR_DISPLAY);
+        LCD_4x20_WriteControl(LCD_4x20_CLEAR_DISPLAY);
         switch_clicked = false;
       }
       
@@ -609,10 +618,11 @@ void lcd_report_realtime()
       
       
     default:
-      LCD_Position(0u, 0u);
+      LCD_4x20_Position(0u, 0u);
       sprintf(fstr, "Scn:%-5d", lcd_screen );
-      LCD_PrintString(fstr);
+      LCD_4x20_PrintString(fstr);
     break;
+#endif      
   }  // switch lcd_screen
 
     
@@ -630,7 +640,7 @@ void lcd_unsigned_int8(uint8_t n, uint8_t base, uint8_t digits)
   }
 
   for (; i > 0; i--)
-      LCD_PutChar('0' + buf[i - 1]);
+      LCD_4x20_PutChar('0' + buf[i - 1]);
 }
 
 void lcd_menu_execute(char *line)
