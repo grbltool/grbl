@@ -28,7 +28,7 @@ uint8_t probe_invert_mask;
 // Probe pin initialization routine.
 void probe_init()
 {
-  #ifdef PSOCn
+  #ifndef PSOC
   PROBE_DDR &= ~(PROBE_MASK); // Configure as input pins
   #ifdef DISABLE_PROBE_PIN_PULL_UP
     PROBE_PORT &= ~(PROBE_MASK); // Normal low operation. Requires external pull-down.

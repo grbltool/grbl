@@ -98,6 +98,8 @@ uint8_t gc_execute_line(char *line)
       gc_block.values.n = JOG_LINE_NUMBER; // Initialize default line number reported during jog.
     #endif
   }
+  
+  gc_block.values.t = MAX_TOOL_NUMBER; // indicate no tool selected
 
   /* -------------------------------------------------------------------------------------
      STEP 2: Import all g-code words in the block line. A g-code word is a letter followed by
@@ -313,7 +315,7 @@ uint8_t gc_execute_line(char *line)
           case 'R': word_bit = WORD_R; gc_block.values.r = value; break;
           case 'S': word_bit = WORD_S; gc_block.values.s = value; break;
           case 'T': word_bit = WORD_T; 
-					  if (value > MAX_TOOL_NUMBER) { FAIL(STATUS_GCODE_MAX_VALUE_EXCEEDED); }
+					  if (value > MAX_TOOL_NUMBER-1) { FAIL(STATUS_GCODE_MAX_VALUE_EXCEEDED); }
             gc_block.values.t = int_value;
 						break;
           case 'X': word_bit = WORD_X; gc_block.values.xyz[X_AXIS] = value; axis_words |= (1<<X_AXIS); break;
@@ -934,7 +936,7 @@ uint8_t gc_execute_line(char *line)
   } // else { pl_data->spindle_speed = 0.0; } // Initialized as zero already.
   
   // [5. Select tool ]: NOT SUPPORTED. Only tracks tool value.
-  gc_state.tool = gc_block.values.t;
+  if ( gc_block.values.t < MAX_TOOL_NUMBER ) gc_state.tool = gc_block.values.t;
 
   // [6. Change tool ]: NOT SUPPORTED
 
