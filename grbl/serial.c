@@ -71,8 +71,19 @@ uint8_t serial_get_tx_buffer_count()
 void serial_init()
 {
   #ifdef PSOC
+    #ifdef PSOC_USB
+  /* Start USBFS Operation with 3V operation */
+  USBUART_Start ( 0u, USBUART_3V_OPERATION );
+  /* Wait for Device to enumerate */
+  while( !USBUART_GetConfiguration () );
+  /* Enumeration is done, enable OUT endpoint for receive data from Host */
+  USBUART_CDC_Init ();
+  UART_Start(); // for debug
+  UART_PutString ( "=== Start ===\r\n" );
+    #else
   UART_Start();
   ISR_UART_RX_StartEx(isr_rx_handler);
+    #endif
   #else
   // Set baud rate
   #if BAUD_RATE < 57600
@@ -96,7 +107,12 @@ void serial_init()
 // Writes one byte to the TX serial buffer. Called by main program.
 void serial_write(uint8_t data) {
   #ifdef PSOC
-  UART_PutChar(data);
+    #ifdef PSOC_USB
+  while ( USBUART_CDCIsReady () == 0 );    /* Wait till component is ready to send more data to the PC */ 
+  USBUART_PutChar ( data );
+    #else
+  UART_PutChar ( data );
+    #endif
   #else
   // Calculate next head
   uint8_t next_head = serial_tx_buffer_head + 1;
@@ -156,11 +172,20 @@ uint8_t serial_read()
   }
 }
 
-
 #ifdef PSOC
 CY_ISR(isr_rx_handler)
 {
+  #ifdef PSOC_USB
+  uint8 buffer [64]; // max buffer length in usbuart
+  uint16 count = USBUART_GetAll ( buffer );           /* Read received data and re-enable OUT endpoint */
+  for ( int i = 0; i < count; i++ ) {
+    uint8 data = buffer [i];
+    UART_PutString ( "data=" );
+    UART_PutChar ( data );
+    UART_PutString ( "\r\n" );
+  #else
   uint8_t data = UART_GetChar();
+  #endif
 #else
 ISR(SERIAL_RX)
 {
@@ -221,7 +246,9 @@ ISR(SERIAL_RX)
       }
   }
 }
-
+#ifdef PSOC_USB
+} /* for */
+#endif
 
 void serial_reset_read_buffer()
 {

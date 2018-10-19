@@ -44,6 +44,10 @@ volatile uint8_t sys_rt_exec_accessory_override; // Global realtime executor bit
 int main(void)
 {
 
+  #ifdef PSOC_USB
+  CyGlobalIntEnable; /* Enable global interrupts. */
+  #endif
+  
   // Initialize system upon power-up.
   serial_init();   // Setup serial baud rate and interrupts
   settings_init(); // Load Grbl settings from EEPROM

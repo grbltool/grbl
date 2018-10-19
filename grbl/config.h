@@ -30,6 +30,7 @@
 //#include "grbl.h" // For Arduino IDE compatibility.
 
 #define PSOC
+#define PSOC_USB
 
 // Define CPU pin map and default settings.
 #define DEFAULTS_GRBLMILL

@@ -25,7 +25,12 @@
 void printString(const char *s)
 {
   #ifdef PSOC
+    #ifdef PSOC_USB
+  while ( USBUART_CDCIsReady () == 0 );    /* Wait till component is ready to send more data to the PC */ 
+  USBUART_PutString ( s );
+    #else
   UART_PutString ( s );
+    #endif
   #else
   while (*s)
     serial_write(*s++);
@@ -37,7 +42,12 @@ void printString(const char *s)
 void printPgmString(const char *s)
 {
   #ifdef PSOC
+    #ifdef PSOC_USB
+  while ( USBUART_CDCIsReady () == 0 );    /* Wait till component is ready to send more data to the PC */ 
+  USBUART_PutString ( s );
+    #else
   UART_PutString ( s );
+    #endif
   #else
   char c;
   while ((c = pgm_read_byte_near(s++)))
