@@ -214,7 +214,7 @@ void st_wake_up()
 {
   // Enable stepper drivers.
   #ifdef PSOC
-    STEP_ENABLE_CONTROL_REG_Write(1);
+    STEP_ENABLE_CONTROL_REG_Write(0); // stepper enable is active low
   #else
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
   else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
@@ -267,7 +267,7 @@ void st_go_idle()
   }
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; } // Apply pin invert.
   #ifdef PSOC
-    STEP_ENABLE_CONTROL_REG_Write(0); // TODO use STEPPERS_DISABLE_BIT
+    STEP_ENABLE_CONTROL_REG_Write(1); // TODO use STEPPERS_DISABLE_BIT, stepper enable is active low
   #else
   if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
   else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
