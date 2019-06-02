@@ -114,7 +114,7 @@ void spindle_stop()
 {
   #ifdef VARIABLE_SPINDLE
     #ifdef PSOC
-      //SPINDLE_PWM_WriteCompare(0);
+      SPINDLE_PWM_WriteCompare(0);
       SPINDLE_PWM_Stop ();
     #else
     SPINDLE_TCCRA_REGISTER &= ~(1<<SPINDLE_COMB_BIT); // Disable PWM. Output voltage is zero.
