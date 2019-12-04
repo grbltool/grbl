@@ -454,6 +454,12 @@ void report_echo_line_received(char *line)
   report_util_feedback_line_feed();
 }
 
+#ifdef PSOC
+uint8_t fault_get_state () {
+  uint8_t fault_state = FAULT_STATUS_REG_Read();
+  return fault_state;
+}  
+#endif
 
  // Prints real-time data. This function grabs a real-time snapshot of the stepper subprogram
  // and the actual location of the CNC machine. Users may change the following function to their
@@ -565,6 +571,9 @@ void report_realtime_status()
     uint8_t lim_pin_state = limits_get_state();
     uint8_t ctrl_pin_state = system_control_get_state();
     uint8_t prb_pin_state = probe_get_state();
+    #ifdef PSOC
+    uint8_t fault_pin_state = fault_get_state();
+    #endif
     if (lim_pin_state | ctrl_pin_state | prb_pin_state) {
       printPgmString(PSTR("|Pn:"));
       if (prb_pin_state) { serial_write('P'); }
@@ -581,6 +590,11 @@ void report_realtime_status()
         if (bit_istrue(ctrl_pin_state,CONTROL_PIN_INDEX_FEED_HOLD)) { serial_write('H'); }
         if (bit_istrue(ctrl_pin_state,CONTROL_PIN_INDEX_CYCLE_START)) { serial_write('S'); }
       }
+      #ifdef PSOC
+        if (bit_istrue(fault_pin_state,X_AXIS)) { serial_write('F'); serial_write('x'); }
+        if (bit_istrue(fault_pin_state,X_AXIS)) { serial_write('F'); serial_write('y'); }
+        if (bit_istrue(fault_pin_state,X_AXIS)) { serial_write('F'); serial_write('z'); }
+      #endif
     }
   #endif
 
