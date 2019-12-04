@@ -76,8 +76,6 @@
 
 #ifdef PSOC
 
-#include "lcd_report.h"
-
 #define GRBL_PORT    "PSoC_Grbl"
 #define _delay_ms CyDelay  // map to standardd PSOC function
 #define _delay_us CyDelayUs  // map to standardd PSOC function
