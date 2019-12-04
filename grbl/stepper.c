@@ -214,7 +214,8 @@ void st_wake_up()
 {
   // Enable stepper drivers.
   #ifdef PSOC
-    STEP_ENABLE_CONTROL_REG_Write(0); // stepper enable is active low
+    // stepper enable is active low
+    ENABLE_CONTROL_REG_Write(bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE));
   #else
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
   else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
@@ -267,7 +268,7 @@ void st_go_idle()
   }
   if (bit_istrue(settings.flags,BITFLAG_INVERT_ST_ENABLE)) { pin_state = !pin_state; } // Apply pin invert.
   #ifdef PSOC
-    STEP_ENABLE_CONTROL_REG_Write(1); // TODO use STEPPERS_DISABLE_BIT, stepper enable is active low
+    ENABLE_CONTROL_REG_Write(pin_state);
   #else
   if (pin_state) { STEPPERS_DISABLE_PORT |= (1<<STEPPERS_DISABLE_BIT); }
   else { STEPPERS_DISABLE_PORT &= ~(1<<STEPPERS_DISABLE_BIT); }
@@ -324,7 +325,7 @@ void st_go_idle()
 // int8 variables and update position counters only when a segment completes. This can get complicated
 // with probing and homing cycles that require true real-time positions.
 #ifdef PSOC
-void isr_stepper_handler()
+CY_ISR(isr_stepper_handler)
 #else
 ISR(TIMER1_COMPA_vect)
 #endif
@@ -336,7 +337,7 @@ ISR(TIMER1_COMPA_vect)
 
   // Set the direction pins a couple of nanoseconds before we step the steppers
   #ifdef PSOC
-  STEP_DIR_CONTROL_REG_Write(st.dir_outbits & DIRECTION_MASK);
+  DIR_CONTROL_REG_Write(st.dir_outbits & DIRECTION_MASK);
   #else
   DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | (st.dir_outbits & DIRECTION_MASK);
   #endif
@@ -546,7 +547,7 @@ void st_reset()
   // Initialize step and direction port pins.
   #ifdef PSOC
   STEP_CONTROL_REG_Write(step_port_invert_mask);
-  STEP_DIR_CONTROL_REG_Write(dir_port_invert_mask);
+  DIR_CONTROL_REG_Write(dir_port_invert_mask);
   #else
   STEP_PORT = (STEP_PORT & ~STEP_MASK) | step_port_invert_mask;
   DIRECTION_PORT = (DIRECTION_PORT & ~DIRECTION_MASK) | dir_port_invert_mask;
@@ -558,6 +559,8 @@ void st_reset()
 void stepper_init()
 {
   #ifdef PSOC
+  RESET_CONTROL_REG_Write(1); // active low, desleep motor driver
+  SLEEP_CONTROL_REG_Write(1); // active low, desleep motor driver
   CLOCK_STEP_Start();
   ISR_STEP_StartEx(isr_stepper_handler);
   #else
