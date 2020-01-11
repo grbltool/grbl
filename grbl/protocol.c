@@ -224,7 +224,11 @@ void protocol_exec_rt_system()
     sys.state = STATE_ALARM; // Set system alarm state
     report_alarm_message(rt_exec);
     // Halt everything upon a critical event flag. Currently hard and soft limits flag this.
+    #ifdef PSOC
+    if ((rt_exec == EXEC_ALARM_HARD_LIMIT) || (rt_exec == EXEC_ALARM_SOFT_LIMIT || (rt_exec == EXEC_ALARM_STEPPER_DRIVER_FAULT))) {
+    #else
     if ((rt_exec == EXEC_ALARM_HARD_LIMIT) || (rt_exec == EXEC_ALARM_SOFT_LIMIT)) {
+    #endif
       report_feedback_message(MESSAGE_CRITICAL_EVENT);
       system_clear_exec_state_flag(EXEC_RESET); // Disable any existing reset
       do {

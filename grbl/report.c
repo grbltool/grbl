@@ -457,13 +457,6 @@ void report_echo_line_received(char *line)
   report_util_feedback_line_feed();
 }
 
-#ifdef PSOC
-uint8_t fault_get_state () {
-  uint8_t fault_state = FAULT_STATUS_REG_Read();
-  return fault_state;
-}  
-#endif
-
  // Prints real-time data. This function grabs a real-time snapshot of the stepper subprogram
  // and the actual location of the CNC machine. Users may change the following function to their
  // specific needs, but the desired real-time data report must be as short as possible. This is
