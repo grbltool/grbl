@@ -47,7 +47,7 @@ uint8_t system_control_get_state()
   uint8_t control_state = 0;
   #ifdef PSOC
   // 0: reset, 1: feed hold, 2: cycle start, 3: door
-  uint8_t pin = CONTROL_PIN_Read();
+  uint8_t pin = CONTROL_STATUS_REG_Read();
   #else
   uint8_t pin = (CONTROL_PIN & CONTROL_MASK) ^ CONTROL_MASK;
   #ifdef INVERT_CONTROL_PIN_MASK
